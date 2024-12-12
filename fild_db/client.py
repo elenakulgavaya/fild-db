@@ -97,7 +97,7 @@ class SqliteDBClient:
         self.connection = None
 
     def connect(self):
-        import sqlite3
+        import sqlite3  # pylint: disable=import-outside-toplevel
 
         if self.connection is None:
             self.connection = sqlite3.connect(self._db_file_path)
@@ -129,7 +129,7 @@ class DbClient:
     __clients = {}
     connection = None
 
-    def __new__(cls, client_name, client, *args, **kwargs):
+    def __new__(cls, client_name, client, *args, **kwargs):  # pylint: disable=unused-argument
         if client_name not in DbClient.__clients:
             DbClient.__clients[client_name] = client.connect()
 
