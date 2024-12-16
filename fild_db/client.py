@@ -12,10 +12,19 @@ TRUNC_ALL_TABLES = (
     "WHERE table_schema in ('{0}') "
     "AND table_name NOT in ({1});"
 )
+TRUNC_ALL_TABLES_PG = (
+    "SELECT "
+    "Concat('TRUNCATE TABLE ', schemaname, '.', tablename, ' CASCADE;') "
+    "FROM pg_tables "
+    "WHERE schemaname in ('{0}') "
+    "AND tablename NOT in ({1});"
+)
+
 
 
 class ConnectionClient:
     connection = None
+    _db = None
 
     def execute(self, sql_script, *args):
 
@@ -33,6 +42,7 @@ class ConnectionClient:
 class PostgresqlDBClient(ConnectionClient):
     def __init__(self, host='0.0.0.0', port=5432, user='user', password=None,
                  db='db', sync_commit=False, **kwargs):
+        self._db = 'public'
         self.connection_url = (
             f'postgresql://{user}:{password}@{host}:{port}/{db}'
         )
@@ -43,17 +53,30 @@ class PostgresqlDBClient(ConnectionClient):
     def connect(self):
         if self.connection is None:
             engine = create_engine(
-                self.connection_url, encoding='utf-8', **self._kwargs
+                self.connection_url
             )
             session = sessionmaker(bind=engine)
             self.connection = session()
 
             if not self._sync_commit:
-                self.connection.execute(SYNC_COMMIT_OFF)
+                self.execute(SYNC_COMMIT_OFF)
                 self.connection.commit()
                 self.connection.close()
 
         return self
+
+    def trunc_all_tables(self, exclude_tables=None):
+        exclude_tables = exclude_tables or []
+        exclude_str = "', '".join(exclude_tables)
+        exclude_tables = f"'{exclude_str}'"
+
+        sql = TRUNC_ALL_TABLES_PG.format(self._db, exclude_tables)
+        trunc_stmts = ''
+
+        for result in self.execute(sql):
+            trunc_stmts += result[0]
+
+        self.execute(trunc_stmts)
 
 
 class MysqlDBClient(ConnectionClient):
