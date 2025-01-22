@@ -17,6 +17,9 @@ class DbModel(Dictionary):
         if column_name == 'global':
             column_name = 'is_global'
 
+        if column_name == 'metadata':
+            column_name = 'metadata_column'
+
         column = getattr(self.__table__, column_name)
         return not column.nullable or column.default
 
@@ -54,6 +57,9 @@ class DbModel(Dictionary):
 
                 if name == 'global':
                     name = 'is_global'
+
+                if name == 'metadata':
+                    name = 'metadata_column'
 
                 if hasattr(field_value, 'to_db'):
                     _value[name] = field_value.to_db()
