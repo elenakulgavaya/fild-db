@@ -18,6 +18,9 @@ def to_dict(model_record, filter_none=True):
         if column_name == 'global':
             column_name = 'is_global'
 
+        if column_name == 'metadata':
+            column_name = 'metadata_column'
+
         value = getattr(model_record, column_name)
 
         if filter_none and value is None:
