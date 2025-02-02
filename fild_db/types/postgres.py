@@ -1,5 +1,3 @@
-from pytz import timezone
-
 from fild.sdk import Uuid
 
 
