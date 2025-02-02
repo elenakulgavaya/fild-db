@@ -200,5 +200,5 @@ class Database:
             rules=rules
         )
 
-    def trunc_all_tables(self, exclude=None):
-        self.db.trunc_all_tables(exclude_tables=exclude) # pylint: disable=no-member
+    def trunc_all_tables(self, schemas=None, exclude=None):
+        self.db.trunc_all_tables(schemas=schemas, exclude_tables=exclude) # pylint: disable=no-member

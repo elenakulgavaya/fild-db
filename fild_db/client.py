@@ -9,14 +9,14 @@ SYNC_COMMIT_OFF = 'SET SYNCHRONOUS_COMMIT TO OFF;'
 TRUNC_ALL_TABLES = (
     "SELECT Concat('TRUNCATE TABLE ', table_schema, '.', TABLE_NAME, ';') "
     "FROM INFORMATION_SCHEMA.TABLES "
-    "WHERE table_schema in ('{0}') "
+    "WHERE table_schema in ({0}) "
     "AND table_name NOT in ({1});"
 )
 TRUNC_ALL_TABLES_PG = (
     "SELECT "
     "Concat('TRUNCATE TABLE ', schemaname, '.', tablename, ' CASCADE;') "
     "FROM pg_tables "
-    "WHERE schemaname in ('{0}') "
+    "WHERE schemaname in ({0}) "
     "AND tablename NOT in ({1});"
 )
 
@@ -65,12 +65,19 @@ class PostgresqlDBClient(ConnectionClient):
 
         return self
 
-    def trunc_all_tables(self, exclude_tables=None):
+    def trunc_all_tables(self, schemas=None, exclude_tables=None):
         exclude_tables = exclude_tables or []
         exclude_str = "', '".join(exclude_tables)
         exclude_tables = f"'{exclude_str}'"
+        schemas = schemas or [self._db]
 
-        sql = TRUNC_ALL_TABLES_PG.format(self._db, exclude_tables)
+        if self._db not in schemas:
+            schemas.append(self._db)
+
+        schemas_str = "', '".join(schemas)
+        db_schemas = f"'{schemas_str}'"
+
+        sql = TRUNC_ALL_TABLES_PG.format(db_schemas, exclude_tables)
         trunc_stmts = ''
 
         for result in self.execute(sql):
@@ -97,14 +104,21 @@ class MysqlDBClient(ConnectionClient):
 
         return self
 
-    def trunc_all_tables(self, exclude_tables=None):
+    def trunc_all_tables(self, schemas=None, exclude_tables=None):
         # Test shouldn't truncate internal evolutions table
         exclude_tables = exclude_tables or []
         exclude_tables.append(PLAY_EVOLUTIONS)
         exclude_str = "', '".join(exclude_tables)
         exclude_tables = f"'{exclude_str}'"
+        schemas = schemas or [self._db]
 
-        sql = TRUNC_ALL_TABLES.format(self._db, exclude_tables)
+        if self._db not in schemas:
+            schemas.append(self._db)
+
+        schemas_str = "', '".join(schemas)
+        db_schemas = f"'{schemas_str}'"
+
+        sql = TRUNC_ALL_TABLES.format(db_schemas, exclude_tables)
         trunc_stmts = ''
 
         for result in self.connection.execute(sql):
