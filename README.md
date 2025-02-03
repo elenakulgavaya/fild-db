@@ -1,4 +1,4 @@
-# fild-db v 0.0.6
+# fild-db v 0.0.7
 
 ![Downloads](https://img.shields.io/pypi/dm/fild-db.svg?style=flat)
 ![Python Versions](https://img.shields.io/pypi/pyversions/fild-db.svg?style=flat)
