@@ -9,28 +9,6 @@ from fild_db.types.model import DbModel
 DEFAULT_DB_TIMEOUT = 3
 
 
-def to_dict(model_record, filter_none=True):
-    d = {}
-
-    for column in model_record.__table__.columns:
-        column_name = column.name
-
-        if column_name == 'global':
-            column_name = 'is_global'
-
-        if column_name == 'metadata':
-            column_name = 'metadata_column'
-
-        value = getattr(model_record, column_name)
-
-        if filter_none and value is None:
-            continue
-
-        d[column_name] = value
-
-    return d
-
-
 class Database:
     _no_db_mode = False
 
@@ -89,21 +67,7 @@ class Database:
         if self._no_db_mode:
             return None
 
-        model = record
-        record = model.to_table_record()
-
-        self.db.connection.add(record)
-        self.db.connection.commit()
-        # refresh() gets actual record state after commit
-        # (needed to make_transient)
-        # make_transient unbinds model from slqalchemy session
-        self.db.connection.refresh(record)
-        make_transient(record)
-        self.db.connection.close_all()
-
-        return model.__class__(is_custom=model.is_custom).with_values(
-            to_dict(record)
-        )
+        return self.db.insert(record)
 
     def insert_records(self, records):
         if self._no_db_mode:
@@ -111,11 +75,9 @@ class Database:
 
         for record in records:
             record = record.to_table_record()
-            self.db.connection.add(record)
-            self.db.connection.flush()
+            self.db.pre_insert(record)
 
-        self.db.connection.commit()
-        self.db.connection.close_all()
+        self.db.commit_and_close()
 
     def delete(self, model, *criteria, **kwargs):
         """
@@ -127,38 +89,17 @@ class Database:
           name='some name'
           id=5
         """
-        query = self.db.connection.query(model.__table__)
-
-        if criteria:
-            query = query.filter(*criteria)
-        else:
-            query = query.filter_by(**kwargs)
-
-        query.delete(synchronize_session=False)
-        self.db.connection.commit()
-        self.db.connection.close_all()
+        self.db.delete(model, *criteria, **kwargs)
 
     def update(self, model, new_values, *criteria, **kwargs):
         """
         Note: new_values - a dictionary where keys are column names,
          values - corresponding values to set.
         """
-        query = self.db.connection.query(model.__table__)
-
-        if criteria:
-            records = query.filter(*criteria)
-        else:
-            records = query.filter_by(**kwargs)
-
-        records.update(new_values, synchronize_session='fetch')
-        self.db.connection.commit()
-        self.db.connection.close_all()
+        self.db.update(model, new_values, *criteria, **kwargs)
 
     def cascade_delete(self, model):
-        sql = f'TRUNCATE {model.__table__.__tablename__} CASCADE;'
-        self.db.connection.execute(sql)
-        self.db.connection.commit()
-        self.db.connection.close_all()
+        self.db.cascade_delete(model)
 
     def verify_no_record(self, model, *criteria, **kwargs):
         data = self._get_records(model.__table__, *criteria, **kwargs)

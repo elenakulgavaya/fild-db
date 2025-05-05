@@ -1,5 +1,5 @@
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import make_transient, sessionmaker
 
 
 PLAY_EVOLUTIONS = 'play_evolutions'
@@ -21,9 +21,100 @@ TRUNC_ALL_TABLES_PG = (
 )
 
 
+def to_dict(model_record, filter_none=True):
+    d = {}
 
-class ConnectionClient:
+    for column in model_record.__table__.columns:
+        column_name = column.name
+
+        if column_name == 'global':
+            column_name = 'is_global'
+
+        if column_name == 'metadata':
+            column_name = 'metadata_column'
+
+        value = getattr(model_record, column_name)
+
+        if filter_none and value is None:
+            continue
+
+        d[column_name] = value
+
+    return d
+
+class BaseClient:
     connection = None
+
+    def cascade_delete(self, model):
+        sql = f'TRUNCATE {model.__table__.__tablename__} CASCADE;'
+        self.connection.execute(sql)
+        self.connection.commit()
+        self.connection.close_all()
+
+    def update(self, model, new_values, *criteria, **kwargs):
+        """
+        Note: new_values - a dictionary where keys are column names,
+         values - corresponding values to set.
+        """
+        query = self.connection.query(model.__table__)
+
+        if criteria:
+            records = query.filter(*criteria)
+        else:
+            records = query.filter_by(**kwargs)
+
+        records.update(new_values, synchronize_session='fetch')
+        self.connection.commit()
+        self.connection.close_all()
+
+    def delete(self, model, *criteria, **kwargs):
+        """
+        :param criteria: Conditional criteria to delete records, e.g.:
+          MyClass.name == 'some name'
+          MyClass.id > 5,
+          MyClass.field.in_([1, 2, 3])
+        :param kwargs: Key-value conditions, e.g.:
+          name='some name'
+          id=5
+        """
+        query = self.connection.query(model.__table__)
+
+        if criteria:
+            query = query.filter(*criteria)
+        else:
+            query = query.filter_by(**kwargs)
+
+        query.delete(synchronize_session=False)
+        self.connection.commit()
+        self.connection.close_all()
+
+    def insert(self, record):
+        model = record
+        record = model.to_table_record()
+
+        self.connection.add(record)
+        self.connection.commit()
+        # refresh() gets actual record state after commit
+        # (needed to make_transient)
+        # make_transient unbinds model from slqalchemy session
+        self.connection.refresh(record)
+        make_transient(record)
+        self.connection.close_all()
+
+        return model.__class__(is_custom=model.is_custom).with_values(
+            to_dict(record)
+        )
+
+    def pre_insert(self, record):
+        self.connection.add(record)
+        self.connection.flush()
+
+    def commit_and_close(self):
+        self.connection.commit()
+        self.connection.close_all()
+
+
+class ConnectionClient(BaseClient):
     _db = None
 
     def execute(self, sql_script, *args):
@@ -128,10 +219,9 @@ class MysqlDBClient(ConnectionClient):
         self.execute(sql)
 
 
-class SqliteDBClient:
+class SqliteDBClient(BaseClient):
     def __init__(self, file_path):
         self._db_file_path = file_path
-        self.connection = None
 
     def connect(self):
         import sqlite3  # pylint: disable=import-outside-toplevel
@@ -162,9 +252,42 @@ class SqliteDBClient:
         self.close_connection()
 
 
+class CassandraDBClient(BaseClient):
+    def __init__(self, hosts=None, keyspace='cqlengine', protocol_version=3):
+        self.hosts = hosts or ['localhost']
+        self.keyspace = keyspace
+        self.protocol_version = protocol_version
+
+    def connect(self):
+        if self.connection is None:
+            from cassandra.cqlengine import connection # pylint: disable=import-outside-toplevel
+            self.connection = connection
+            connection.setup(
+                self.hosts,
+                self.keyspace,
+                protocol_version=self.protocol_version,
+                lazy_connect=True
+            )
+
+        return self
+
+    def insert(self, record):
+        record.__table__.create(**record.to_db())
+
+        return record
+
+    def cascade_delete(self, model):
+        raise NotImplemented
+
+    def update(self, model, new_values, *criteria, **kwargs):
+        raise NotImplemented
+
+    def delete(self, model, *criteria, **kwargs):
+        raise NotImplemented
+
+
 class DbClient:
     __clients = {}
-    connection = None
 
     def __new__(cls, client_name, client, *args, **kwargs):  # pylint: disable=unused-argument
         if client_name not in DbClient.__clients:
