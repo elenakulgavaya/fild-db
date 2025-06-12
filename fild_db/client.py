@@ -304,3 +304,6 @@ class DbClient(BaseClient):
             DbClient.__clients[client_name] = client.connect()
 
         return DbClient.__clients[client_name]
+
+    def trunc_all_tables(self, schemas=None, exclude_tables=None):
+        raise NotImplementedError
