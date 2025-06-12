@@ -24,7 +24,7 @@ class DBJsonDict(DBBaseJson):
 
 
 class DbJsonArray(Array):
-    def with_values(self, values):
+    def with_values(self, values): # pylint: disable=duplicate-code
         if isinstance(values, str):
             values = json.loads(values)
 

@@ -1,7 +1,7 @@
 from waiting import wait
 
 from fild_compare import compare
-from fild_db.client import DbClient
+from fild_db.client import DbClient, to_dict
 from fild_db.types.model import DbModel
 
 
