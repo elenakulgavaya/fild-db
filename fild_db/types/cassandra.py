@@ -1,8 +1,9 @@
 import json
 
-from fild_db.types.common import DBBaseJsonDict
+from fild.sdk import Dictionary
+from fild_db.types.common import DBBaseJson
 
 
-class DBJsonDict(DBBaseJsonDict):
+class DBJsonDict(DBBaseJson, Dictionary):
     def to_db(self):
         return json.dumps(self.value).encode('utf-8')

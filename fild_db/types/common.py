@@ -2,7 +2,7 @@ import json
 
 from pytz import timezone
 
-from fild.sdk import Dictionary, Field, dates
+from fild.sdk import Field, dates
 
 
 class DbTimestamp(Field):
@@ -19,7 +19,7 @@ class DbTimestamp(Field):
         return self.value.astimezone(tz=timezone(tz))
 
 
-class DBBaseJsonDict(Dictionary):
+class DBBaseJson(Field):
     def with_values(self, values):
         if isinstance(values, str):
             values = json.loads(values)

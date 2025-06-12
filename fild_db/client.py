@@ -133,6 +133,9 @@ class ConnectionClient(BaseClient):
 
         return None
 
+    def trunc_all_tables(self, schemas=None, exclude_tables=None):
+        raise NotImplementedError
+
 
 class PostgresqlDBClient(ConnectionClient):
     def __init__(self, host='0.0.0.0', port=5432, user='user', password=None,
@@ -255,6 +258,9 @@ class SqliteDBClient(BaseClient):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close_connection()
 
+    def trunc_all_tables(self, schemas=None, exclude_tables=None):
+        raise NotImplementedError
+
 
 class CassandraDBClient(BaseClient):
     def __init__(self, hosts=None, keyspace='cqlengine', protocol_version=3):
@@ -290,7 +296,7 @@ class CassandraDBClient(BaseClient):
         raise NotImplementedError
 
 
-class DbClient:
+class DbClient(BaseClient):
     __clients = {}
 
     def __new__(cls, client_name, client, *args, **kwargs) -> BaseClient:  # pylint: disable=unused-argument
