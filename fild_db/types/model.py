@@ -70,3 +70,12 @@ class DbModel(Dictionary):
 
     def to_table_record(self):
         return self.__table__(**self.to_db())  # pylint: disable=not-callable
+
+
+class CassandraDbModel(DbModel):
+    @classmethod
+    def get_table_name(cls):
+        return cls.__table__.__table_name__
+
+    def to_table_record(self):
+        raise NotImplementedError

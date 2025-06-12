@@ -1,6 +1,8 @@
+import json
+
 from pytz import timezone
 
-from fild.sdk import Field, dates
+from fild.sdk import Field, Dictionary, dates
 
 
 class DbTimestamp(Field):
@@ -15,3 +17,14 @@ class DbTimestamp(Field):
 
     def to_timezone(self, tz):
         return self.value.astimezone(tz=timezone(tz))
+
+
+class DBBaseJson(Dictionary):
+    def with_values(self, values):
+        if isinstance(values, str):
+            values = json.loads(values)
+
+        if values is not None:
+            return super().with_values(values)
+
+        return self
