@@ -1,4 +1,3 @@
-from sqlalchemy.orm import make_transient
 from waiting import wait
 
 from fild_compare import compare

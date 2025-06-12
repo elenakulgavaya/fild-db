@@ -114,6 +114,9 @@ class BaseClient:
         self.connection.commit()
         self.connection.close_all()
 
+    def trunc_all_tables(self, schemas=None, exclude_tables=None):
+        raise NotImplementedError
+
 
 class ConnectionClient(BaseClient):
     _db = None
@@ -278,19 +281,19 @@ class CassandraDBClient(BaseClient):
         return record
 
     def cascade_delete(self, model):
-        raise NotImplemented
+        raise NotImplementedError
 
     def update(self, model, new_values, *criteria, **kwargs):
-        raise NotImplemented
+        raise NotImplementedError
 
     def delete(self, model, *criteria, **kwargs):
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class DbClient:
     __clients = {}
 
-    def __new__(cls, client_name, client, *args, **kwargs):  # pylint: disable=unused-argument
+    def __new__(cls, client_name, client, *args, **kwargs) -> BaseClient:  # pylint: disable=unused-argument
         if client_name not in DbClient.__clients:
             DbClient.__clients[client_name] = client.connect()
 

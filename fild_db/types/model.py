@@ -78,4 +78,4 @@ class CassandraDbModel(DbModel):
         return cls.__table__.__table_name__
 
     def to_table_record(self):
-        raise NotImplemented
+        raise NotImplementedError
