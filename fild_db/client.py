@@ -42,6 +42,7 @@ def to_dict(model_record, filter_none=True):
 
     return d
 
+
 class BaseClient:
     connection = None
 
