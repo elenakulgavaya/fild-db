@@ -282,6 +282,7 @@ class CassandraDBClient(BaseClient):
         return self
 
     def insert(self, record):
+        self.connect()
         record.__table__.create(**record.to_db())
 
         return record
