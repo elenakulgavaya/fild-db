@@ -79,3 +79,7 @@ class CassandraDbModel(DbModel):
 
     def to_table_record(self):
         raise NotImplementedError
+
+    def _is_column_required(self, column_name):
+        column = getattr(self.__table__, column_name)
+        return column.column.required

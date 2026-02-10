@@ -2,7 +2,7 @@ import json
 
 from pytz import timezone
 
-from fild.sdk import Field, Dictionary, dates
+from fild.sdk import Array, Field, Dictionary, dates
 
 
 class DbTimestamp(Field):
@@ -20,6 +20,17 @@ class DbTimestamp(Field):
 
 
 class DBBaseJson(Dictionary):
+    def with_values(self, values):
+        if isinstance(values, str):
+            values = json.loads(values)
+
+        if values is not None:
+            return super().with_values(values)
+
+        return self
+
+
+class DBBaseArray(Array):
     def with_values(self, values):
         if isinstance(values, str):
             values = json.loads(values)

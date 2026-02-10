@@ -24,21 +24,24 @@ TRUNC_ALL_TABLES_PG = (
 def to_dict(model_record, filter_none=True):
     d = {}
 
-    for column in model_record.__table__.columns:
-        column_name = column.name
+    if hasattr(model_record, '__table__'):
+        for column in model_record.__table__.columns:
+            column_name = column.name
 
-        if column_name == 'global':
-            column_name = 'is_global'
+            if column_name == 'global':
+                column_name = 'is_global'
 
-        if column_name == 'metadata':
-            column_name = 'metadata_column'
+            if column_name == 'metadata':
+                column_name = 'metadata_column'
 
-        value = getattr(model_record, column_name)
+            value = getattr(model_record, column_name)
 
-        if filter_none and value is None:
-            continue
+            if filter_none and value is None:
+                continue
 
-        d[column_name] = value
+            d[column_name] = value
+    else:
+        d = dict(model_record)
 
     return d
 
@@ -51,6 +54,20 @@ class BaseClient:
         self.connection.execute(sql)
         self.connection.commit()
         self.connection.close_all()
+
+    def get_records(self, model, *criteria, **kwargs):
+        order_by = kwargs.pop('order_by', None)
+        query = self.connection.query(model)
+
+        if criteria:
+            data = query.filter(*criteria).filter_by(**kwargs).order_by(
+                order_by
+            ).all()
+        else:
+            data = query.filter_by(**kwargs).order_by(order_by).all()
+
+        self.connection.close()
+        return data
 
     def update(self, model, new_values, *criteria, **kwargs):
         """
@@ -281,6 +298,16 @@ class CassandraDBClient(BaseClient):
 
         return self
 
+    def get_records(self, model, *criteria, **kwargs):
+        query = model.objects
+
+        if kwargs:
+            data = query.allow_filtering().filter(**kwargs)
+        else:
+            data = query.all()
+
+        return data
+
     def insert(self, record):
         self.connect()
         record.__table__.create(**record.to_db())
@@ -295,6 +322,22 @@ class CassandraDBClient(BaseClient):
 
     def delete(self, model, *criteria, **kwargs):
         raise NotImplementedError
+
+    def trunc_all_tables(self, schemas=None, exclude_tables=None):
+        rows = self.connection.execute(
+            '''
+            SELECT table_name
+            FROM system_schema.tables
+            WHERE keyspace_name = %s
+            ''',
+            (self.keyspace, )
+        )
+
+        for row in rows:
+            table = row['table_name']
+
+            if table not in exclude_tables:
+                self.connection.execute(f'TRUNCATE {self.keyspace}.{table}')
 
 
 class DbClient(BaseClient):

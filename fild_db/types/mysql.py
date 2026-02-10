@@ -1,8 +1,8 @@
 import json
 
-from fild.sdk import Array, Bool
+from fild.sdk import Bool
 
-from fild_db.types.common import DBBaseJson
+from fild_db.types.common import DBBaseArray, DBBaseJson
 
 
 class DbBool(Bool):
@@ -23,15 +23,6 @@ class DBJsonDict(DBBaseJson):
         return json.dumps(self.value, separators=(',', ':'))
 
 
-class DbJsonArray(Array):
-    def with_values(self, values):
-        if isinstance(values, str):
-            values = json.loads(values)
-
-        if values is not None:
-            return super().with_values(values)
-
-        return self
-
+class DbJsonArray(DBBaseArray):
     def to_db(self):
         return json.dumps(self.value, separators=(',', ':'))

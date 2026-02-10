@@ -20,27 +20,13 @@ class Database:
     def reset_mode(self):
         self._no_db_mode = False
 
-    def _get_records(self, model, *criteria, **kwargs):
-        order_by = kwargs.pop('order_by', None)
-        query = self.db.connection.query(model)
-
-        if criteria:
-            data = query.filter(*criteria).filter_by(**kwargs).order_by(
-                order_by
-            ).all()
-        else:
-            data = query.filter_by(**kwargs).order_by(order_by).all()
-
-        self.db.connection.close()
-        return data
-
     def get_record(self, model, *criteria, **kwargs):
         return self.get_records(model, *criteria, **kwargs)[0]
 
     def get_records_nowait(self, model, *criteria, **kwargs):
         return [
             model(is_custom=True).with_values(to_dict(rec))
-            for rec in self._get_records(model.__table__, *criteria, **kwargs)
+            for rec in self.db.get_records(model.__table__, *criteria, **kwargs)
         ]
 
     def get_records(self, model, *criteria, **kwargs):
@@ -50,7 +36,7 @@ class Database:
         def filter_records():
             return [
                 model(is_custom=True).with_values(to_dict(rec))
-                for rec in self._get_records(
+                for rec in self.db.get_records(
                     model.__table__, *criteria, **kwargs
                 )
             ]
@@ -101,14 +87,14 @@ class Database:
         self.db.cascade_delete(model)
 
     def verify_no_record(self, model, *criteria, **kwargs):
-        data = self._get_records(model.__table__, *criteria, **kwargs)
+        data = self.db.get_records(model.__table__, *criteria, **kwargs)
         assert not data, (
             f'Unexpected {model.get_table_name()} record by: {kwargs}'
         )
 
     def verify_no_record_with_wait(self, model, *criteria, **kwargs):
         wait(
-            lambda: not self._get_records(model.__table__, *criteria, **kwargs),
+            lambda: not self.db.get_records(model.__table__, *criteria, **kwargs),
             waiting_for=f'no {model.get_table_name()} records by: {kwargs}',
             timeout_seconds=DEFAULT_DB_TIMEOUT,
             sleep_seconds=0
